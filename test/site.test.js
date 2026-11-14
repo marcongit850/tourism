@@ -321,6 +321,22 @@ test("unknown paths 404 and other methods are rejected", async () => {
   assert.equal(denied.status, 405);
 });
 
+test("every page header keeps Login visible and the other links behind a menu button", async () => {
+  for (const path of ["/", "/join", "/login", "/received"]) {
+    const html = await (await get(path)).text();
+    assert.match(html, /<button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav-menu">/, path);
+    assert.match(html, /id="site-nav-menu"/, path);
+    assert.match(html, /class="nav-login" href="\/login">Login<\/a>/, path);
+    assert.match(html, /href="\/join">Join the mission<\/a>/, path);
+    assert.match(html, /id="site-nav-menu" class="nav-menu">\s*<a href="(?:\/)?#about">About<\/a>\s*<a href="(?:\/)?#issues">Issues<\/a>/, path);
+    assert.equal(html.includes("onclick="), false, path);
+    assert.equal(html.includes("onkeydown="), false, path);
+    assert.equal(html.includes("onkeyup="), false, path);
+    assert.match(html, /button\.addEventListener\("click"/, path);
+    assert.equal(DASH.test(html), false, path);
+  }
+});
+
 test("styles.css is loaded from the pinned builders commit", async () => {
   const res = await get("/styles.css");
   assert.equal(res.status, 200);
