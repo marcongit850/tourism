@@ -1,0 +1,22 @@
+# Preview worker for https://waltontourism.org.
+# Publish this file's worker only: name tourism-preview.
+# Do not add a second worker name.
+name = "tourism-preview"
+main = "src/index.js"
+compatibility_date = "2026-11-13"
+workers_dev = true
+
+# Sends only to this verified destination.
+[[send_email]]
+name = "EMAIL"
+destination_address = "marc@whpinc.com"
+
+[observability]
+enabled = true
+
+[observability.logs]
+head_sampling_rate = 1
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
