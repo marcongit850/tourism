@@ -213,6 +213,126 @@ const EXTRA_CSS = `
         .who-cards, .news-grid { grid-template-columns: 1fr 1fr; column-gap: 28px; }
         .mission-statement { font-size: 36px; }
       }
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+      .nav-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        width: 44px;
+        height: 44px;
+        margin: 0;
+        padding: 0;
+        border: 1px solid #001840;
+        background: transparent;
+        color: #001840;
+        font: inherit;
+        line-height: 1;
+        cursor: pointer;
+        appearance: none;
+      }
+      .nav-toggle:hover,
+      .nav-toggle[aria-expanded="true"] {
+        background: #001840;
+        color: #f6f3ec;
+      }
+      .nav-toggle:focus-visible {
+        outline: 2px solid #d0a040;
+        outline-offset: 3px;
+      }
+      .nav-toggle-bars {
+        position: relative;
+        display: block;
+        width: 18px;
+        height: 14px;
+      }
+      .nav-toggle-bars span {
+        position: absolute;
+        left: 0;
+        width: 18px;
+        height: 2px;
+        background: currentColor;
+      }
+      .nav-toggle-bars span:nth-child(1) { top: 0; }
+      .nav-toggle-bars span:nth-child(2) { top: 6px; }
+      .nav-toggle-bars span:nth-child(3) { top: 12px; }
+      .nav-toggle[aria-expanded="true"] .nav-toggle-bars span:nth-child(1) {
+        top: 6px;
+        transform: rotate(45deg);
+      }
+      .nav-toggle[aria-expanded="true"] .nav-toggle-bars span:nth-child(2) { opacity: 0; }
+      .nav-toggle[aria-expanded="true"] .nav-toggle-bars span:nth-child(3) {
+        top: 6px;
+        transform: rotate(-45deg);
+      }
+      .nav-menu { display: none; }
+      @media (max-width: 879px) {
+        .header-inner { flex-wrap: wrap; row-gap: 4px; }
+        .brand { flex: 1 0 auto; }
+        .nav { flex: 1 0 auto; margin-left: auto; gap: 10px; }
+        .nav .button,
+        .nav-toggle,
+        .nav > a.nav-login { flex: none; }
+        .nav > a.nav-login {
+          display: inline-flex;
+          align-items: center;
+          min-height: 44px;
+          padding: 0 2px;
+          color: #001840;
+          font-size: 15px;
+          font-weight: 600;
+          line-height: 1;
+          white-space: nowrap;
+          background-image: linear-gradient(#d0a040, #d0a040);
+          background-repeat: no-repeat;
+          background-size: calc(100% - 4px) 2px;
+          background-position: center calc(50% + 0.62em);
+        }
+        .nav.is-open .nav-menu {
+          display: flex;
+          flex-direction: column;
+          position: absolute;
+          z-index: 6;
+          left: 0;
+          right: 0;
+          top: 100%;
+          background: #001840;
+          border-top: 1px solid rgba(208, 160, 64, 0.55);
+          border-bottom: 3px solid #d0a040;
+          box-shadow: 0 16px 40px rgba(0, 24, 64, 0.18);
+          padding: 6px 0;
+        }
+        .nav.is-open .nav-menu a {
+          display: block;
+          padding: 14px 20px;
+          color: #f6f3ec;
+          font-size: 17px;
+          font-weight: 600;
+          line-height: 1.3;
+        }
+        .nav.is-open .nav-menu a:hover,
+        .nav.is-open .nav-menu a:focus-visible {
+          background: rgba(208, 160, 64, 0.18);
+          color: #deba68;
+        }
+      }
+      @media (min-width: 720px) and (max-width: 879px) {
+        .nav.is-open .nav-menu a { padding-left: 32px; padding-right: 32px; }
+      }
+      @media (min-width: 880px) {
+        .nav-toggle { display: none; }
+        .nav-menu { display: contents; }
+      }
 `;
 
 function escapeHtml(value) {
@@ -269,12 +389,56 @@ function nav(home) {
   const root = home ? "" : "/";
   return `
         <nav class="nav" aria-label="Main navigation">
-          <a href="${root}#about">About</a>
-          <a href="${root}#issues">Issues</a>
-          <a href="/login">Login</a>
+          <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav-menu">
+            <span class="nav-toggle-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+            <span class="visually-hidden">Menu</span>
+          </button>
+          <div id="site-nav-menu" class="nav-menu">
+            <a href="${root}#about">About</a>
+            <a href="${root}#issues">Issues</a>
+          </div>
+          <a class="nav-login" href="/login">Login</a>
           <a class="button" href="/join">Join the mission</a>
         </nav>`;
 }
+
+const NAV_SCRIPT = `<script>
+(function () {
+  var nav = document.querySelector(".site-header .nav");
+  var button = nav && nav.querySelector(".nav-toggle");
+  var menu = document.getElementById("site-nav-menu");
+  var label = button && button.querySelector(".visually-hidden");
+  if (!nav || !button || !menu || !label) return;
+  var desktop = window.matchMedia("(min-width: 880px)");
+  function setOpen(open) {
+    if (desktop.matches) open = false;
+    button.setAttribute("aria-expanded", open ? "true" : "false");
+    nav.classList.toggle("is-open", open);
+    label.textContent = open ? "Close menu" : "Menu";
+  }
+  button.addEventListener("click", function () {
+    setOpen(button.getAttribute("aria-expanded") !== "true");
+  });
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && button.getAttribute("aria-expanded") === "true") {
+      setOpen(false);
+      button.focus();
+    }
+  });
+  menu.addEventListener("click", function (event) {
+    if (event.target.closest && event.target.closest("a")) setOpen(false);
+  });
+  document.addEventListener("click", function (event) {
+    if (button.getAttribute("aria-expanded") === "true" && !nav.contains(event.target)) setOpen(false);
+  });
+  nav.addEventListener("focusout", function (event) {
+    if (button.getAttribute("aria-expanded") === "true" && !nav.contains(event.relatedTarget)) setOpen(false);
+  });
+  function onDesktopChange() { setOpen(false); }
+  if (desktop.addEventListener) desktop.addEventListener("change", onDesktopChange);
+  else if (desktop.addListener) desktop.addListener(onDesktopChange);
+})();
+</script>`;
 
 function header(home) {
   return `
@@ -375,6 +539,7 @@ function layout({ title, description, path, mainId, main, home, indexable, lead 
     </main>
     ${footer()}
     ${lead ? "<script>\nfbq('track', 'Lead');\n</script>" : ""}
+    ${NAV_SCRIPT}
   </body>
 </html>
 `;
