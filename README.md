@@ -28,7 +28,7 @@ npm test
 npx wrangler dev --port 43123 --ip 127.0.0.1
 ```
 
-Membership and contact mail use the `EMAIL` send_email binding. The destination is `marc@whpinc.com`. The From address is `marc@2911studio.com` and the From name is `Walton County Tourism Network`.
+Membership and contact mail use the `EMAIL` send_email binding. The destination is `marc@whpinc.com`. The From address is `hello@waltontourism.org` and the From name is `Walton County Tourism Network`. The binding allows only that sender.
 
 ## Deploy
 
@@ -44,6 +44,7 @@ npx wrangler deploy
 [[send_email]]
 name = "EMAIL"
 destination_address = "marc@whpinc.com"
+allowed_sender_addresses = ["hello@waltontourism.org"]
 ```
 
 ## Facebook

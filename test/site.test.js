@@ -39,7 +39,8 @@ test("PREVIEW is the single indexing switch and launch copy is present", () => {
   assert.ok(src.includes("Disallow: /login"));
   assert.ok(src.includes("Disallow: /received"));
   assert.ok(src.includes("marc@whpinc.com"));
-  assert.ok(src.includes("marc@2911studio.com"));
+  assert.ok(src.includes("hello@waltontourism.org"));
+  assert.equal(src.includes("2911studio.com"), false);
   assert.ok(src.includes("Walton County Tourism Network"));
 });
 
@@ -166,9 +167,9 @@ test("contact validation, honeypot, and mail", async () => {
   assert.equal(sent.headers.get("location"), APEX + "/received?for=contact");
   assert.equal(good.sent.length, 1);
   const mail = good.sent[0];
-  assert.equal(mail.from, "marc@2911studio.com");
+  assert.equal(mail.from, "hello@waltontourism.org");
   assert.equal(mail.to, "marc@whpinc.com");
-  assert.match(mail.raw, /From: Walton County Tourism Network <marc@2911studio\.com>/);
+  assert.match(mail.raw, /From: Walton County Tourism Network <hello@waltontourism\.org>/);
   assert.match(mail.raw, /Reply-To: ada@example\.com/);
   assert.match(mail.raw, /Subject: Tourism Network contact/);
   assert.match(mail.raw, /Ada Lovelace/);
@@ -485,6 +486,8 @@ test("wrangler publishes HUB_URL and leaves observability in place", () => {
   const toml = readFileSync(new URL("../wrangler.toml", import.meta.url), "utf8");
   assert.match(toml, /\[observability\]\nenabled = true\n\n\[observability\.logs\]\nhead_sampling_rate = 1\n\n\[observability\.traces\]\nenabled = true\nhead_sampling_rate = 1\n/);
   assert.match(toml, /\[vars\]\nHUB_URL = "https:\/\/waltonleaders\.org\/api\/hub\/applications"\n/);
+  assert.match(toml, /\[\[send_email\]\]\nname = "EMAIL"\ndestination_address = "marc@whpinc.com"\nallowed_sender_addresses = \["hello@waltontourism.org"\]\n/);
+  assert.equal(toml.includes("2911studio.com"), false);
   assert.equal(toml.includes("HUB_INGEST_KEY ="), false);
   assert.equal(toml.includes("[[routes]]"), false);
   assert.equal(toml.includes("\nroute "), false);

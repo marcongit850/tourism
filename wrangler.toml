@@ -6,10 +6,11 @@ main = "src/index.js"
 compatibility_date = "2026-11-13"
 workers_dev = true
 
-# Sends only to this verified destination.
+# This Worker emails only marc@whpinc.com, and only from hello@waltontourism.org.
 [[send_email]]
 name = "EMAIL"
 destination_address = "marc@whpinc.com"
+allowed_sender_addresses = ["hello@waltontourism.org"]
 
 [observability]
 enabled = true
