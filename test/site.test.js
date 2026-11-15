@@ -79,8 +79,9 @@ test("homepage renders the network, priorities, and is indexable", async () => {
   assert.match(html, /<link rel="canonical" href="https:\/\/waltontourism\.org\/">/);
   assert.match(html, /property="og:url" content="https:\/\/waltontourism\.org\/"/);
   assert.equal(html.includes("waltonbuildersnetwork.org"), false);
-  assert.match(html, /class="nav-login" href="https:\/\/waltonleaders\.org\/login">Login<\/a>/);
-  assert.equal(html.split("waltonleaders.org").length - 1, 1);
+  assert.match(html, /class="nav-login" href="https:\/\/waltonleaders\.org\/login\/tourism">Login<\/a>/);
+  assert.match(html, /class="button" href="https:\/\/waltonleaders\.org\/login\/tourism">Sign in<\/a>/);
+  assert.equal(html.split("waltonleaders.org").length - 1, 2);
   assert.equal(html.includes("googletagmanager"), true);
   assert.match(html, /fbq\('init', '1770263524034778'\);/);
   assert.match(html, /fbq\('track', 'PageView'\);/);
@@ -121,7 +122,7 @@ test("join, login, and thank-you pages render without dashes or a pixel", async 
   for (const path of ["/login", "/login?notice=1", "/login.html"]) {
     const login = await get(path);
     assert.equal(login.status, 302, path);
-    assert.equal(login.headers.get("location"), "https://waltonleaders.org/login", path);
+    assert.equal(login.headers.get("location"), "https://waltonleaders.org/login/tourism", path);
   }
   const thanks = await (await get("/received?for=join")).text();
   assert.match(thanks, /Thank you for your application\./);
@@ -329,7 +330,7 @@ test("every page header keeps Login visible and the other links behind a menu bu
     const html = await (await get(path)).text();
     assert.match(html, /<button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav-menu">/, path);
     assert.match(html, /id="site-nav-menu"/, path);
-    assert.match(html, /class="nav-login" href="https:\/\/waltonleaders\.org\/login">Login<\/a>/, path);
+    assert.match(html, /class="nav-login" href="https:\/\/waltonleaders\.org\/login\/tourism">Login<\/a>/, path);
     assert.match(html, /href="\/join">Join the mission<\/a>/, path);
     assert.match(html, /id="site-nav-menu" class="nav-menu">\s*<a href="(?:\/)?#about">About<\/a>\s*<a href="(?:\/)?#issues">Issues<\/a>/, path);
     assert.equal(html.includes("onclick="), false, path);

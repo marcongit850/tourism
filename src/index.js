@@ -12,7 +12,7 @@ const ORIGIN = "https://cdn.jsdelivr.net/gh/marcongit850/builders@5fb1f681f9f25a
 const TO = "marc@whpinc.com";
 const FROM = "hello@waltontourism.org";
 const FROM_NAME = "Walton County Tourism Network";
-const HUB_LOGIN_URL = "https://waltonleaders.org/login";
+const HUB_LOGIN_URL = "https://waltonleaders.org/login/tourism";
 const SITE = "Walton County Tourism Network";
 const DESCRIPTION = "Walton County Tourism Network is an independent advocacy group for businesses that depend on tourism, giving them a unified voice in Walton County.";
 
@@ -565,7 +565,7 @@ function homePage() {
               <h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" style="vertical-align:-3px;margin-right:8px"><path fill="currentColor" d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 0 1 6 0v3z"/></svg>Members only</h3>
               <p>Current issues, documents, and the network's positions are shared with approved members. Sign in to view them.</p>
               <div class="hero-actions" style="margin-top:18px;">
-                <a class="button" href="/login">Sign in</a>
+                <a class="button" href="${HUB_LOGIN_URL}">Sign in</a>
                 <a class="text-link" href="/join">Request membership</a>
               </div>
             </article>`;
