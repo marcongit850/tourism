@@ -20,3 +20,7 @@ head_sampling_rate = 1
 [observability.traces]
 enabled = true
 head_sampling_rate = 1
+
+# HUB_INGEST_KEY is a Worker secret and is not stored in this file.
+[vars]
+HUB_URL = "https://waltonleaders.org/api/hub/applications"

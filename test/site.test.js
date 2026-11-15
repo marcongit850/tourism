@@ -24,12 +24,12 @@ function get(path, base = APEX) {
   return worker.fetch(new Request(base + path), mailbox());
 }
 
-function post(path, fields, env = mailbox(), base = APEX) {
+function post(path, fields, env = mailbox(), base = APEX, ctx) {
   return worker.fetch(new Request(base + path, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams(fields).toString(),
-  }), env);
+  }), env, ctx);
 }
 
 test("PREVIEW is the single indexing switch and launch copy is present", () => {
@@ -78,7 +78,8 @@ test("homepage renders the network, priorities, and is indexable", async () => {
   assert.match(html, /<link rel="canonical" href="https:\/\/waltontourism\.org\/">/);
   assert.match(html, /property="og:url" content="https:\/\/waltontourism\.org\/"/);
   assert.equal(html.includes("waltonbuildersnetwork.org"), false);
-  assert.equal(html.includes("waltonleaders.org"), false);
+  assert.match(html, /class="nav-login" href="https:\/\/waltonleaders\.org\/login">Login<\/a>/);
+  assert.equal(html.split("waltonleaders.org").length - 1, 1);
   assert.equal(html.includes("googletagmanager"), true);
   assert.match(html, /fbq\('init', '1770263524034778'\);/);
   assert.match(html, /fbq\('track', 'PageView'\);/);
@@ -91,7 +92,7 @@ test("homepage renders the network, priorities, and is indexable", async () => {
 
 test("join, login, and thank-you pages render without dashes or a pixel", async () => {
   const indexable = ["/join"];
-  const noindexPages = ["/login", "/login?notice=1", "/received", "/received?for=join"];
+  const noindexPages = ["/received", "/received?for=join"];
   for (const path of [...indexable, ...noindexPages]) {
     const res = await get(path);
     assert.equal(res.status, 200, path);
@@ -116,10 +117,11 @@ test("join, login, and thank-you pages render without dashes or a pixel", async 
   assert.match(join, /name="industry"/);
   assert.match(join, /Industry or type of tourism business/);
   assert.match(join, /name="company_fax"/);
-  const login = await (await get("/login")).text();
-  assert.equal(login.includes("No approved member account matches that email yet."), false);
-  const noticed = await (await get("/login?notice=1")).text();
-  assert.match(noticed, /No approved member account matches that email yet\./);
+  for (const path of ["/login", "/login?notice=1", "/login.html"]) {
+    const login = await get(path);
+    assert.equal(login.status, 302, path);
+    assert.equal(login.headers.get("location"), "https://waltonleaders.org/login", path);
+  }
   const thanks = await (await get("/received?for=join")).text();
   assert.match(thanks, /Thank you for your application\./);
   const contactThanks = await (await get("/received")).text();
@@ -322,11 +324,11 @@ test("unknown paths 404 and other methods are rejected", async () => {
 });
 
 test("every page header keeps Login visible and the other links behind a menu button", async () => {
-  for (const path of ["/", "/join", "/login", "/received"]) {
+  for (const path of ["/", "/join", "/received"]) {
     const html = await (await get(path)).text();
     assert.match(html, /<button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav-menu">/, path);
     assert.match(html, /id="site-nav-menu"/, path);
-    assert.match(html, /class="nav-login" href="\/login">Login<\/a>/, path);
+    assert.match(html, /class="nav-login" href="https:\/\/waltonleaders\.org\/login">Login<\/a>/, path);
     assert.match(html, /href="\/join">Join the mission<\/a>/, path);
     assert.match(html, /id="site-nav-menu" class="nav-menu">\s*<a href="(?:\/)?#about">About<\/a>\s*<a href="(?:\/)?#issues">Issues<\/a>/, path);
     assert.equal(html.includes("onclick="), false, path);
@@ -335,6 +337,158 @@ test("every page header keeps Login visible and the other links behind a menu bu
     assert.match(html, /button\.addEventListener\("click"/, path);
     assert.equal(DASH.test(html), false, path);
   }
+});
+
+function hubEnv(extra = {}) {
+  return Object.assign(mailbox(), {
+    HUB_URL: "https://waltonleaders.org/api/hub/applications",
+    HUB_INGEST_KEY: "test-hub-key",
+  }, extra);
+}
+
+function trackCtx() {
+  const jobs = [];
+  return {
+    jobs,
+    waitUntil(promise) {
+      jobs.push(promise);
+    },
+  };
+}
+
+const JOIN_FIELDS = {
+  name: "Ada Lovelace",
+  email: "ada@example.com",
+  phone: "850-555-0100",
+  company: "Gulf Cafe",
+  role: "Owner",
+  industry: "Restaurant",
+  years_in_walton: "12 years",
+  website: "",
+  about: "I want a group that will push back when fees land on restaurants.",
+  company_fax: "",
+};
+
+test("a valid join is emailed and forwarded to the hub", async () => {
+  const calls = [];
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = (input, init) => {
+    calls.push({ input, init });
+    return gate.then(() => new Response(null, { status: 204 }));
+  };
+  try {
+    const env = hubEnv();
+    const ctx = trackCtx();
+    const sent = await post("/join", JOIN_FIELDS, env, APEX, ctx);
+    assert.equal(sent.status, 303);
+    assert.equal(sent.headers.get("location"), APEX + "/received?for=join");
+    assert.equal(env.sent.length, 1);
+    assert.match(env.sent[0].raw, /Subject: Tourism Network membership application/);
+    assert.match(env.sent[0].raw, /To: marc@whpinc.com/);
+    assert.equal(env.sent[0].raw.includes("company_fax"), false);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].input, "https://waltonleaders.org/api/hub/applications");
+    assert.equal(calls[0].init.method, "POST");
+    assert.equal(calls[0].init.headers["X-Hub-Key"], "test-hub-key");
+    assert.equal(calls[0].init.headers["Content-Type"], "application/json");
+    assert.ok(calls[0].init.signal instanceof AbortSignal);
+    const body = JSON.parse(calls[0].init.body);
+    assert.equal(body.network, "tourism");
+    assert.equal(body.name, "Ada Lovelace");
+    assert.equal(body.email, "ada@example.com");
+    assert.equal(body.source_url, APEX + "/join");
+    assert.match(body.submitted_at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    assert.deepEqual(body.fields, JOIN_FIELDS);
+    release();
+    await Promise.all(ctx.jobs);
+  } finally {
+    release();
+    globalThis.fetch = original;
+  }
+});
+
+test("contact stays email only and a hub failure still accepts the join", async () => {
+  const original = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (input, init) => {
+    calls.push({ input, init });
+    return new Response("no", { status: 502 });
+  };
+  try {
+    const contactEnv = hubEnv();
+    const contactCtx = trackCtx();
+    const contact = await post("/contact", {
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      message: "Hello from the footer.",
+    }, contactEnv, APEX, contactCtx);
+    assert.equal(contact.status, 303);
+    assert.equal(contact.headers.get("location"), APEX + "/received?for=contact");
+    assert.equal(contactEnv.sent.length, 1);
+    assert.match(contactEnv.sent[0].raw, /Subject: Tourism Network contact/);
+    await Promise.all(contactCtx.jobs);
+    assert.equal(calls.length, 0);
+
+    const failedEnv = hubEnv();
+    const failedCtx = trackCtx();
+    const failed = await post("/join", JOIN_FIELDS, failedEnv, APEX, failedCtx);
+    assert.equal(failed.status, 303);
+    assert.equal(failedEnv.sent.length, 1);
+    assert.match(failedEnv.sent[0].raw, /Subject: Tourism Network membership application/);
+    await Promise.all(failedCtx.jobs);
+    assert.equal(calls.length, 1);
+    const ctx = trackCtx();
+    const env = hubEnv();
+    globalThis.fetch = async () => {
+      calls.push("throw");
+      throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+    };
+    const timedOut = await post("/join", JOIN_FIELDS, env, APEX, ctx);
+    assert.equal(timedOut.status, 303);
+    assert.equal(env.sent.length, 1);
+    await Promise.all(ctx.jobs);
+
+    const missing = hubEnv({ HUB_INGEST_KEY: "" });
+    const missingCtx = trackCtx();
+    const before = calls.length;
+    const skipped = await post("/join", JOIN_FIELDS, missing, APEX, missingCtx);
+    assert.equal(skipped.status, 303);
+    assert.equal(missing.sent.length, 1);
+    await Promise.all(missingCtx.jobs);
+    assert.equal(calls.length, before);
+
+    const broken = hubEnv({
+      EMAIL: {
+        async send() {
+          throw new Error("mailbox down");
+        },
+      },
+    });
+    const brokenCtx = trackCtx();
+    const beforeBroken = calls.length;
+    const mailFailed = await post("/join", JOIN_FIELDS, broken, APEX, brokenCtx);
+    assert.equal(mailFailed.status, 200);
+    assert.match(await mailFailed.text(), /We could not send that just now\./);
+    await Promise.all(brokenCtx.jobs);
+    assert.equal(calls.length, beforeBroken);
+    assert.equal(brokenCtx.jobs.length, 0);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("wrangler publishes HUB_URL and leaves observability in place", () => {
+  const toml = readFileSync(new URL("../wrangler.toml", import.meta.url), "utf8");
+  assert.match(toml, /\[observability\]\nenabled = true\n\n\[observability\.logs\]\nhead_sampling_rate = 1\n\n\[observability\.traces\]\nenabled = true\nhead_sampling_rate = 1\n/);
+  assert.match(toml, /\[vars\]\nHUB_URL = "https:\/\/waltonleaders\.org\/api\/hub\/applications"\n/);
+  assert.equal(toml.includes("HUB_INGEST_KEY ="), false);
+  assert.equal(toml.includes("[[routes]]"), false);
+  assert.equal(toml.includes("\nroute "), false);
+  assert.equal(toml.includes("const PREVIEW"), false);
 });
 
 test("styles.css is loaded from the pinned builders commit", async () => {

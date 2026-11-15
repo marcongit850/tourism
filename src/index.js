@@ -12,6 +12,7 @@ const ORIGIN = "https://cdn.jsdelivr.net/gh/marcongit850/builders@5fb1f681f9f25a
 const TO = "marc@whpinc.com";
 const FROM = "marc@2911studio.com";
 const FROM_NAME = "Walton County Tourism Network";
+const HUB_LOGIN_URL = "https://waltonleaders.org/login";
 const SITE = "Walton County Tourism Network";
 const DESCRIPTION = "Walton County Tourism Network is an independent advocacy group for businesses that depend on tourism, giving them a unified voice in Walton County.";
 
@@ -397,7 +398,7 @@ function nav(home) {
             <a href="${root}#about">About</a>
             <a href="${root}#issues">Issues</a>
           </div>
-          <a class="nav-login" href="/login">Login</a>
+          <a class="nav-login" href="${HUB_LOGIN_URL}">Login</a>
           <a class="button" href="/join">Join the mission</a>
         </nav>`;
 }
@@ -771,37 +772,6 @@ function thanksPage(kind) {
   });
 }
 
-function loginPage(notice) {
-  const main = `
-      <section class="container apply">
-        <div class="apply-copy">
-          <p class="eyebrow">Members</p>
-          <h1>Sign in</h1>
-          <p>Members can sign in here after an administrator approves their application.</p>
-          ${notice}
-          <form class="apply-form login-form" action="/login" method="post">
-            <label>Email
-              <input type="email" name="email" required autocomplete="username">
-            </label>
-            <label>Password
-              <input type="password" name="password" required autocomplete="current-password">
-            </label>
-            <button class="button" type="submit">Sign in</button>
-          </form>
-          <p class="login-join">Not a member yet? <a class="text-link" href="/join">Request membership</a></p>
-        </div>
-      </section>`;
-  return layout({
-    title: "Sign in · Walton County Tourism Network",
-    description: "Sign in to Walton County Tourism Network. Members can sign in after an administrator approves their application.",
-    path: "/login",
-    mainId: "signin",
-    main,
-    home: false,
-    indexable: false,
-  });
-}
-
 function failPage() {
   return layout({
     title: "Please try again · Walton County Tourism Network",
@@ -863,6 +833,45 @@ async function sendMail(env, replyTo, subject, body) {
   await env.EMAIL.send(message);
 }
 
+function formFields(form) {
+  const fields = {};
+  for (const [key, value] of form.entries()) {
+    fields[String(key)] = typeof value === "string" ? value : String(value);
+  }
+  return fields;
+}
+
+async function forwardJoinApplication(env, payload) {
+  const key = env && env.HUB_INGEST_KEY;
+  const hubUrl = env && env.HUB_URL;
+  if (typeof key !== "string" || key === "") {
+    console.error("Hub forward skipped: HUB_INGEST_KEY is not set.");
+    return;
+  }
+  if (typeof hubUrl !== "string" || hubUrl === "") {
+    console.error("Hub forward skipped: HUB_URL is not set.");
+    return;
+  }
+  try {
+    const response = await fetch(hubUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Hub-Key": key,
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(4000),
+    });
+    await response.arrayBuffer();
+    if (!response.ok) {
+      console.error("Hub forward failed with status " + response.status + ".");
+    }
+  } catch (err) {
+    const message = err && err.message ? err.message : "unknown error";
+    console.error("Hub forward failed: " + message);
+  }
+}
+
 function pngBytes(b64) {
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
@@ -875,7 +884,7 @@ function isLoopback(hostname) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     {
       let redirect = false;
@@ -964,6 +973,15 @@ export default {
             about || "(not provided)",
           ].join("\n")
         );
+        const hubForward = forwardJoinApplication(env, {
+          network: "tourism",
+          name,
+          email,
+          submitted_at: new Date().toISOString(),
+          source_url: url.origin + url.pathname,
+          fields: formFields(form),
+        });
+        if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(hubForward);
         return Response.redirect(new URL("/received?for=join", request.url), 303);
       } catch (err) {
         return html(failPage());
@@ -997,10 +1015,7 @@ export default {
     if (path === "/index.html") return html(head ? null : homePage());
     if (path === "/join" || path === "/join.html") return html(head ? null : joinPage());
     if (path === "/login" || path === "/login.html") {
-      const notice = url.searchParams.get("notice") === "1"
-        ? '<p class="login-notice" role="status">No approved member account matches that email yet.</p>'
-        : "";
-      return html(head ? null : loginPage(notice));
+      return Response.redirect(HUB_LOGIN_URL, 302);
     }
     if (path === "/received") {
       const page = url.searchParams.get("for") === "join" ? thanksPage("join") : thanksPage("contact");
