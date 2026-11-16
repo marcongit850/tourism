@@ -93,6 +93,7 @@ test("homepage renders the network, priorities, and is indexable", async () => {
   assert.equal(DASH.test(html), false);
   assert.match(html, /name="company_fax"/);
   assert.match(html, /href="https:\/\/www\.facebook\.com\/groups\/waltontourism"/);
+  assert.match(html, /href="https:\/\/www\.linkedin\.com\/company\/waltontourism" target="_blank" rel="noopener noreferrer" aria-label="Walton Tourism on LinkedIn"/);
 });
 
 test("join, login, and thank-you pages render without dashes or a pixel", async () => {
@@ -111,6 +112,7 @@ test("join, login, and thank-you pages render without dashes or a pixel", async 
     assert.equal(html.includes("fbq('track', 'Lead');"), leadPage, path);
     assert.equal(html.includes("facebook.com/tr"), leadPage, path);
     assert.match(html, /https:\/\/waltontourism\.org/, path);
+    assert.match(html, /class="footer-socials">[\s\S]*href="https:\/\/www\.facebook\.com\/groups\/waltontourism"[\s\S]*href="https:\/\/www\.linkedin\.com\/company\/waltontourism" target="_blank" rel="noopener noreferrer" aria-label="Walton Tourism on LinkedIn"/, path);
     assert.equal(html.includes("waltonbuildersnetwork.org"), false, path);
     const robots = indexable.includes(path) ? "index, follow" : "noindex, nofollow";
     assert.match(html, new RegExp(`<meta name="robots" content="${robots}">`), path);
