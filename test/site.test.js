@@ -52,6 +52,9 @@ test("homepage renders the network, priorities, and is indexable", async () => {
   const html = await res.text();
   assert.match(html, /<title>Walton County Tourism Network<\/title>/);
   assert.match(html, /A Unified Voice for Walton County's Tourism Economy\./);
+  assert.match(html, /class="hero-logo">\s*<p class="hero-tagline">Advocating for Walton County's Tourism Industry\. Protecting Your Interests\.<\/p>\s*<img /);
+  assert.match(html, /class="hero-note">We advocate and lobby on the issues that affect tourism in Walton County\.<\/p>/);
+  assert.equal(html.includes("Free membership, subject to administrator approval."), false);
   assert.match(html, /Join the Network/);
   assert.match(html, /Explore Our Priorities/);
   assert.match(html, /we push back/);
@@ -114,6 +117,9 @@ test("join, login, and thank-you pages render without dashes or a pixel", async 
   }
   const join = await (await get("/join")).text();
   assert.match(join, /Request membership/);
+  assert.equal(join.includes("Advocating for Walton County"), false);
+  assert.equal(join.includes("We advocate and lobby"), false);
+  assert.match(join, /Membership is free\. Tell us who you are/);
   assert.match(join, /push back/);
   assert.match(join, /name="years_in_walton"/);
   assert.match(join, /name="industry"/);
