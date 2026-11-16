@@ -245,8 +245,69 @@ const EXTRA_CSS = `
         line-height: 1.5;
       }
       .coming { max-width: 44rem; margin-top: 18px; font-size: 16px; line-height: 1.55; }
-      #mission, #priorities, #who, #why {
+      #mission, #priorities, #who, #why, #why-we-exist {
         scroll-margin-top: calc(var(--header-height) + 18px);
+      }
+      .why-exist {
+        padding: 46px 0 52px;
+        border-top: 2px solid var(--gold);
+      }
+      .why-exist h2 {
+        margin-top: 14px;
+        max-width: 18em;
+        font-size: 36px;
+        line-height: 1.08;
+      }
+      .why-exist-copy {
+        max-width: 42rem;
+        margin-top: 22px;
+        font-size: 17px;
+        line-height: 1.6;
+      }
+      .why-exist-copy p + p { margin-top: 20px; }
+      .why-exist-copy strong { font-weight: 700; }
+      .why-exist-copy .button { margin-top: 28px; }
+      .why-exist-copy .button span { margin-left: 8px; }
+      .article-copy > .eyebrow {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        line-height: 1.5;
+        text-transform: uppercase;
+      }
+      .article-copy h1 {
+        max-width: 18em;
+        line-height: 1.08;
+      }
+      .article-copy .prose p {
+        margin: 0 0 18px;
+        font-size: 18px;
+        line-height: 1.6;
+      }
+      .article-copy .prose strong { font-weight: 700; }
+      .article-copy .prose em {
+        font-style: italic;
+        font-synthesis: style;
+      }
+      .article-copy .prose a {
+        text-decoration: underline;
+        text-decoration-color: var(--gold);
+        text-decoration-thickness: 2px;
+        text-underline-offset: 3px;
+      }
+      .apply-copy > p.article-cta { margin: 36px 0 0; }
+      @media (max-width: 380px) {
+        .why-exist h2 { font-size: 32px; }
+      }
+      @media (min-width: 880px) {
+        .why-exist { padding: 72px 0 76px; }
+        .why-exist h2 { font-size: 48px; }
+        .why-exist-copy { margin-top: 24px; font-size: 19px; }
+        .article-copy > .eyebrow {
+          font-size: 12px;
+          letter-spacing: 0.2em;
+        }
+        .article-copy .prose p { font-size: 19px; }
       }
       @media (min-width: 720px) {
         .apply h1, .thanks h1 { font-size: 52px; }
@@ -386,6 +447,111 @@ function escapeHtml(value) {
   return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function escapeText(value) {
+  return escapeHtml(value).replace(/"/g, "&quot;");
+}
+
+function inlineMarkdown(raw) {
+  const pattern = /(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)/g;
+  const parts = [];
+  let last = 0;
+  for (const match of String(raw).matchAll(pattern)) {
+    parts.push(escapeText(raw.slice(last, match.index)));
+    const token = match[0];
+    if (token.startsWith("**")) parts.push("<strong>" + escapeText(token.slice(2, -2)) + "</strong>");
+    else parts.push("<em>" + escapeText(token.slice(1, -1)) + "</em>");
+    last = match.index + token.length;
+  }
+  parts.push(escapeText(raw.slice(last)));
+  return parts.join("");
+}
+
+export function renderMarkdown(source) {
+  const lines = String(source ?? "").replace(/\r\n/g, "\n").split("\n");
+  const out = [];
+  let paragraph = [];
+  const flush = () => {
+    if (!paragraph.length) return;
+    out.push("<p>" + inlineMarkdown(paragraph.join(" ")) + "</p>");
+    paragraph = [];
+  };
+  for (const line of lines) {
+    if (!line.trim()) {
+      flush();
+      continue;
+    }
+    const heading = /^(#{1,3})\s+(.+)$/.exec(line);
+    if (heading) {
+      flush();
+      const level = heading[1].length;
+      out.push("<h" + level + ">" + inlineMarkdown(heading[2]) + "</h" + level + ">");
+      continue;
+    }
+    paragraph.push(line.trim());
+  }
+  flush();
+  return out.join("\n");
+}
+
+const WHY_TITLE = "Your Tourism Business Could Be Affected by a Decision You Never Knew Was Being Made.";
+const WHY_DOCUMENT_TITLE = WHY_TITLE + " · " + SITE;
+const WHY_DESCRIPTION = "You work hard to keep visitors coming to Walton County. But who's paying attention to the local government decisions that could affect your business?";
+const WHY_EXISTS = "That's why Walton County Tourism Network exists.";
+const WHY_HOME_LEAD = "You're managing employees, handling guest requests, maintaining properties, and keeping your business competitive. Meanwhile, local government continues considering rules, fees, and spending decisions that could affect your livelihood.";
+const WHY_HOME_FOLLOW = "Often, the people most affected don't learn about proposed changes until the public discussion is nearly over.";
+const WHY_ARTICLE_MARKDOWN = [
+  "# " + WHY_TITLE,
+  "",
+  "**" + WHY_DESCRIPTION + "**",
+  "",
+  "Whether you own a vacation rental, manage properties, operate a restaurant, run a hotel, or provide services to visitors, your days are already full.",
+  "",
+  "You're managing employees, handling guest requests, maintaining properties, paying expenses, and keeping your business competitive.",
+  "",
+  "You probably don't spend your evenings reviewing county agendas or reading proposed ordinances.",
+  "",
+  "But those proposals can have real consequences.",
+  "",
+  "New vacation rental restrictions. Higher registration fees. Changes to occupancy rules. Parking regulations. Beach access policies. Additional business requirements. Decisions about how tourism-related tax revenues are spent.",
+  "",
+  "Each decision can affect operating costs, property rights, guest experiences, and the long-term health of Walton County's visitor economy.",
+  "",
+  "And often, the people most affected don't learn about proposed changes until the public discussion is nearly over.",
+  "",
+  "**That's the problem.**",
+  "",
+  "Tourism businesses are busy serving the very economy that supports thousands of local jobs. They can't realistically monitor every government proposal while managing the daily demands of their businesses.",
+  "",
+  "Meanwhile, even relatively small regulatory changes can accumulate into substantial costs and restrictions over time.",
+  "",
+  "**" + WHY_EXISTS + "**",
+  "",
+  "We're building a network dedicated to keeping tourism-related businesses informed, increasing awareness of proposed policies, and ensuring that those who depend on our visitor economy have opportunities to participate in decisions affecting their future.",
+  "",
+  "We believe responsible tourism and thriving local communities can coexist. We also believe regulations should be fair, government spending should be transparent, and the rights of property owners and businesses deserve consideration.",
+  "",
+  "Not every proposed regulation is harmful. But every significant proposal deserves scrutiny, open discussion, and input from the people it affects.",
+  "",
+  "**You shouldn't find out about a new restriction when it's already too late to have your voice heard.**",
+  "",
+  "Our goal is simple: Help make sure you know what's coming before the decisions are final.",
+  "",
+  "Because protecting Walton County's tourism economy starts with knowing what's happening in Walton County.",
+  "",
+  "**Walton County Tourism Network**",
+  "",
+  "*Connect. Advocate. Thrive.*",
+].join("\n");
+
+const WHY_SIGNATURE = "<p><strong>Walton County Tourism Network</strong></p>";
+const WHY_SIGNATURE_LINK = '<p><strong><a href="https://waltontourism.org/">Walton County Tourism Network</a></strong></p>';
+
+export function renderWhyArticleBody(markdown = WHY_ARTICLE_MARKDOWN) {
+  const html = renderMarkdown(markdown);
+  if (!html.includes(WHY_SIGNATURE)) return html;
+  return html.replace(WHY_SIGNATURE, WHY_SIGNATURE_LINK);
+}
+
 function canonical(path) {
   if (!path || path === "/") return CANONICAL_ORIGIN + "/";
   return CANONICAL_ORIGIN + path;
@@ -403,7 +569,7 @@ function robotsTxt() {
 }
 
 function sitemapXml() {
-  return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n  <url><loc>" + CANONICAL_ORIGIN + "/</loc></url>\n  <url><loc>" + CANONICAL_ORIGIN + "/join</loc></url>\n</urlset>\n";
+  return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n  <url><loc>" + CANONICAL_ORIGIN + "/</loc></url>\n  <url><loc>" + CANONICAL_ORIGIN + "/join</loc></url>\n  <url><loc>" + CANONICAL_ORIGIN + "/why-we-exist</loc></url>\n</urlset>\n";
 }
 
 function jsonLd() {
@@ -639,6 +805,19 @@ function homePage() {
         </div>
       </section>
 
+      <section class="why-exist" id="why-we-exist" aria-labelledby="why-exist-heading">
+        <div class="container">
+          <p class="eyebrow">WHY WE EXIST</p>
+          <h2 id="why-exist-heading">${escapeHtml(WHY_TITLE)}</h2>
+          <div class="why-exist-copy">
+            <p>${escapeHtml(WHY_HOME_LEAD)}</p>
+            <p>${escapeHtml(WHY_HOME_FOLLOW)}</p>
+            <p><strong>${escapeHtml(WHY_EXISTS)}</strong></p>
+            <a class="button" href="/why-we-exist">Learn Why We Exist <span aria-hidden="true">\u2192</span></a>
+          </div>
+        </div>
+      </section>
+
       <section class="purpose" id="about">
         <div class="container purpose-inner">
           <div class="purpose-heading">
@@ -737,6 +916,28 @@ function homePage() {
     mainId: "home",
     main,
     home: true,
+    indexable: true,
+  });
+}
+
+function whyWeExistPage() {
+  const main = `
+      <article class="container apply">
+        <div class="apply-copy article-copy">
+          <p class="eyebrow">WHY WE EXIST</p>
+          <div class="prose">
+            ${renderWhyArticleBody()}
+          </div>
+          <p class="article-cta"><a class="button" href="/join">Join the Network</a></p>
+        </div>
+      </article>`;
+  return layout({
+    title: WHY_DOCUMENT_TITLE,
+    description: WHY_DESCRIPTION,
+    path: "/why-we-exist",
+    mainId: "why-we-exist",
+    main,
+    home: false,
     indexable: true,
   });
 }
@@ -1065,6 +1266,7 @@ export default {
       });
     }
     if (path === "/index.html") return html(head ? null : homePage());
+    if (path === "/why-we-exist" || path === "/why-we-exist.html") return html(head ? null : whyWeExistPage());
     if (path === "/join" || path === "/join.html") return html(head ? null : joinPage());
     if (path === "/login" || path === "/login.html") {
       return Response.redirect(HUB_LOGIN_URL, 302);

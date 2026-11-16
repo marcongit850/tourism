@@ -270,6 +270,7 @@ test("robots.txt allows crawling and the sitemap uses the apex", async () => {
   const xml = await map.text();
   assert.match(xml, /<loc>https:\/\/waltontourism\.org\/<\/loc>/);
   assert.match(xml, /<loc>https:\/\/waltontourism\.org\/join<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/waltontourism\.org\/why-we-exist<\/loc>/);
   assert.equal(xml.includes("waltonbuildersnetwork.org"), false);
 });
 
@@ -334,7 +335,7 @@ test("unknown paths 404 and other methods are rejected", async () => {
 });
 
 test("every page header keeps Login visible and the other links behind a menu button", async () => {
-  for (const path of ["/", "/join", "/received"]) {
+  for (const path of ["/", "/join", "/why-we-exist", "/received"]) {
     const html = await (await get(path)).text();
     assert.match(html, /<button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav-menu">/, path);
     assert.match(html, /id="site-nav-menu"/, path);
