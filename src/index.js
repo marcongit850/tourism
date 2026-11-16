@@ -88,6 +88,51 @@ const WHO = [
 
 const EXTRA_CSS = `
       .brand-mark, .hero-logo img { background: transparent !important; border-radius: 50%; }
+      .hero-logo {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+        width: 100%;
+        height: auto;
+      }
+      .hero-tagline {
+        margin: 0;
+        max-width: 34rem;
+        color: #001840;
+        font-family: "Source Sans 3", Arial, sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        line-height: 1.45;
+        text-transform: uppercase;
+        text-wrap: balance;
+      }
+      .hero-tagline::before {
+        content: "";
+        display: inline-block;
+        width: 28px;
+        height: 2px;
+        margin-right: 12px;
+        background: #d0a040;
+        vertical-align: middle;
+      }
+      @media (min-width: 880px) {
+        .hero-logo { width: 220px; }
+        .hero-tagline {
+          max-width: none;
+          font-size: 11px;
+          letter-spacing: 0.11em;
+        }
+      }
+      @media (min-width: 1120px) {
+        .hero-logo { width: 300px; }
+        .hero-tagline {
+          font-size: 12px;
+          letter-spacing: 0.12em;
+        }
+        .hero-tagline::before { width: 34px; margin-right: 15px; }
+      }
       .footer-top .button { align-self: start; cursor: pointer; font-family: inherit; }
       .contact-dialog {
         inset: unset;
@@ -580,9 +625,10 @@ function homePage() {
             <a class="button" href="/join">Join the Network</a>
             <a class="text-link" href="#priorities">Explore Our Priorities <span aria-hidden="true">↗</span></a>
           </div>
-          <p class="hero-note">Free membership, subject to administrator approval.</p>
+          <p class="hero-note">We advocate and lobby on the issues that affect tourism in Walton County.</p>
         </div>
         <div class="hero-logo">
+          <p class="hero-tagline">Advocating for Walton County's Tourism Industry. Protecting Your Interests.</p>
           <img src="/assets/walton-county-tourism-network-logo.webp?v=2" alt="Walton County Tourism Network logo" width="512" height="512">
         </div>
       </section>
