@@ -206,6 +206,7 @@ const EXTRA_CSS = `
       .footer-social:hover,
       .footer-social:focus-visible { color: #f6f3ec; background: rgba(208, 160, 64, 0.18); border-color: #d0a040; }
       .footer-social svg { display: block; width: 16px; height: 16px; }
+      .footer-socials { display: flex; align-items: center; gap: 10px; flex: none; }
       .belief + .belief { margin-top: 14px; }
       .block { padding: 46px 0 28px; }
       .mission-statement {
@@ -536,9 +537,14 @@ function footer() {
         </div>
         <div class="footer-bottom">
           <span>Walton County Tourism Network · Walton County, Florida</span>
-          <a class="footer-social" href="https://www.facebook.com/groups/waltontourism" target="_blank" rel="noopener noreferrer" aria-label="Walton County Tourism Network Facebook group">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M14 13.5h2.75l.42-2.88H14V8.79c0-.79.22-1.33 1.35-1.33H17.5V4.82A18.3 18.3 0 0 0 14.86 4C12.15 4 10.25 5.66 10.25 8.45v2.17H7.5v2.88h2.75V20h3.75z"/></svg>
-          </a>
+          <div class="footer-socials">
+            <a class="footer-social" href="https://www.facebook.com/groups/waltontourism" target="_blank" rel="noopener noreferrer" aria-label="Walton County Tourism Network Facebook group">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M14 13.5h2.75l.42-2.88H14V8.79c0-.79.22-1.33 1.35-1.33H17.5V4.82A18.3 18.3 0 0 0 14.86 4C12.15 4 10.25 5.66 10.25 8.45v2.17H7.5v2.88h2.75V20h3.75z"/></svg>
+            </a>
+            <a class="footer-social" href="https://www.linkedin.com/company/waltontourism" target="_blank" rel="noopener noreferrer" aria-label="Walton Tourism on LinkedIn">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452z"/></svg>
+            </a>
+          </div>
         </div>
       </div>
     </footer>`;
