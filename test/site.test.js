@@ -413,11 +413,137 @@ test("a valid join is emailed and forwarded to the hub", async () => {
     assert.equal(body.email, "ada@example.com");
     assert.equal(body.source_url, APEX + "/join");
     assert.match(body.submitted_at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    assert.equal(body.ref, "");
     assert.deepEqual(body.fields, JOIN_FIELDS);
     release();
     await Promise.all(ctx.jobs);
   } finally {
     release();
+    globalThis.fetch = original;
+  }
+});
+
+function applyForm(html) {
+  const start = html.indexOf('<form class="apply-form"');
+  const end = html.indexOf("</form>", start);
+  return html.slice(start, end);
+}
+
+function hiddenRef(html) {
+  const match = applyForm(html).match(/<input type="hidden" name="ref" value="([^"]*)">/);
+  assert.ok(match);
+  return match[1];
+}
+
+test("join copies a personal invite ref into the application and does not cache it", async () => {
+  const plain = await get("/join");
+  assert.equal(plain.status, 200);
+  assert.equal(plain.headers.get("cache-control"), "private, no-store");
+  assert.equal(plain.headers.get("cdn-cache-control"), "no-store");
+  const plainHtml = await plain.text();
+  assert.equal(hiddenRef(plainHtml), "");
+  assert.equal(plainHtml.split('name="ref"').length - 1, 1);
+  assert.equal(plainHtml.includes('class="contact-form"'), true);
+  assert.equal(plainHtml.slice(plainHtml.indexOf('class="contact-form"')).includes('name="ref"'), false);
+  assert.equal(DASH.test(plainHtml), false);
+
+  const upper = await get("/join?ref=%20AbC234gh%20");
+  assert.equal(upper.headers.get("cache-control"), "private, no-store");
+  assert.equal(upper.headers.get("cdn-cache-control"), "no-store");
+  const upperHtml = await upper.text();
+  assert.equal(hiddenRef(upperHtml), "abc234gh");
+  assert.equal(upperHtml.includes("AbC234gh"), false);
+  assert.equal(DASH.test(upperHtml), false);
+
+  const alias = await get("/join.html?ref=23456789");
+  assert.equal(alias.status, 200);
+  assert.equal(alias.headers.get("cache-control"), "private, no-store");
+  assert.equal(hiddenRef(await alias.text()), "23456789");
+
+  const other = await get("/join?ref=kmnpqrst");
+  const otherHtml = await other.text();
+  assert.equal(hiddenRef(otherHtml), "kmnpqrst");
+  assert.equal(other.headers.get("cache-control"), "private, no-store");
+  assert.notEqual(upperHtml, otherHtml);
+  assert.equal(otherHtml.includes("abc234gh"), false);
+  assert.equal(upperHtml.includes("kmnpqrst"), false);
+
+  const head = await worker.fetch(new Request(APEX + "/join?ref=abc234gh", { method: "HEAD" }), mailbox());
+  assert.equal(head.status, 200);
+  assert.equal(await head.text(), "");
+  assert.equal(head.headers.get("cache-control"), "private, no-store");
+  assert.equal(head.headers.get("cdn-cache-control"), "no-store");
+
+  for (const ref of [
+    "abc",
+    "abcdefghi",
+    "abc234g0",
+    "abc234g1",
+    "abc234gi",
+    "abc234gl",
+    "abc234go",
+    "iiiiiiii",
+    "llllllll",
+    "oooooooo",
+    "00000000",
+    "11111111",
+    "abcd-efg",
+    'abc"defg',
+    "abc<defg",
+    "abc&defg",
+    "abc'defg",
+    "<script>alert(1)</script>",
+    '" onmouseover="alert(1)',
+  ]) {
+    const html = await (await get("/join?ref=" + encodeURIComponent(ref))).text();
+    assert.equal(hiddenRef(html), "", ref);
+    assert.equal(applyForm(html).includes("onmouseover"), false, ref);
+    assert.equal(applyForm(html).includes("<script>"), false, ref);
+  }
+
+  const slash = await worker.fetch(new Request("http://www.waltontourism.org/join/?ref=abc234gh"), mailbox());
+  assert.equal(slash.status, 301);
+  assert.equal(slash.headers.get("location"), APEX + "/join?ref=abc234gh");
+  assert.equal(slash.headers.get("cache-control"), "private, no-store");
+  assert.equal(slash.headers.get("cdn-cache-control"), "no-store");
+
+  const otherSlash = await worker.fetch(new Request(APEX + "/join/?ref=kmnpqrst"), mailbox());
+  assert.equal(otherSlash.headers.get("location"), APEX + "/join?ref=kmnpqrst");
+  assert.equal(otherSlash.headers.get("cache-control"), "private, no-store");
+  assert.notEqual(slash.headers.get("location"), otherSlash.headers.get("location"));
+});
+
+test("a join application forwards the form ref to the hub", async () => {
+  const calls = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    calls.push({ input, init });
+    return new Response(null, { status: 204 });
+  };
+  try {
+    const env = hubEnv();
+    const ctx = trackCtx();
+    const fields = { ...JOIN_FIELDS, ref: "  abc234gh\n" };
+    const sent = await post("/join", fields, env, APEX, ctx);
+    assert.equal(sent.status, 303);
+    assert.equal(env.sent.length, 1);
+    assert.equal(env.sent[0].raw.includes("abc234gh"), false);
+    await Promise.all(ctx.jobs);
+    assert.equal(calls.length, 1);
+    const body = JSON.parse(calls[0].init.body);
+    assert.equal(body.ref, "abc234gh");
+    assert.equal(body.fields.ref, "  abc234gh\n");
+    assert.equal(body.network, "tourism");
+
+    const invalidEnv = hubEnv();
+    const invalidCtx = trackCtx();
+    const invalid = await post("/join", { ...JOIN_FIELDS, ref: "not-a-code" }, invalidEnv, APEX, invalidCtx);
+    assert.equal(invalid.status, 303);
+    await Promise.all(invalidCtx.jobs);
+    const invalidBody = JSON.parse(calls[1].init.body);
+    assert.equal(invalidBody.ref, "not-a-code");
+    assert.equal(invalidBody.fields.ref, "not-a-code");
+  } finally {
     globalThis.fetch = original;
   }
 });

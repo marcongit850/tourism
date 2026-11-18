@@ -447,6 +447,10 @@ function escapeHtml(value) {
   return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function escapeAttr(value) {
+  return escapeHtml(value).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 function escapeText(value) {
   return escapeHtml(value).replace(/"/g, "&quot;");
 }
@@ -942,7 +946,15 @@ function whyWeExistPage() {
   });
 }
 
-function joinPage() {
+const REFERRAL_CODE = /^[abcdefghjkmnpqrstuvwxyz23456789]{8}$/;
+
+function referralCode(value) {
+  const code = String(value ?? "").trim().toLowerCase();
+  return REFERRAL_CODE.test(code) ? code : "";
+}
+
+function joinPage(ref) {
+  const code = escapeAttr(referralCode(ref));
   const main = `
       <section class="container apply">
         <div class="apply-copy">
@@ -952,6 +964,7 @@ function joinPage() {
           <p>Membership is free. Tell us who you are so an administrator can review your application. We add members only after that approval. The network is for tourism supporters and for businesses that depend on tourism, directly or indirectly.</p>
         </div>
         <form class="apply-form" action="/join" method="post">
+          <input type="hidden" name="ref" value="${code}">
           <div class="row">
             <label>Full name
               <input type="text" name="name" required autocomplete="name">
@@ -1049,6 +1062,16 @@ function pageHeaders(type) {
 
 function html(body) {
   return new Response(body, { headers: pageHeaders("text/html; charset=utf-8") });
+}
+
+function joinHtml(body) {
+  return new Response(body, {
+    headers: withHeaders({
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "private, no-store",
+      "CDN-Cache-Control": "no-store",
+    }),
+  });
 }
 
 function text(status, body) {
@@ -1156,7 +1179,15 @@ export default {
         target.pathname = target.pathname.replace(/\/+$/, "") || "/";
         redirect = true;
       }
-      if (redirect) return Response.redirect(target.toString(), 301);
+      if (redirect) {
+        const headers = { Location: target.toString() };
+        // A cached redirect would keep the first visitor's ref in Location.
+        if (url.searchParams.has("ref")) {
+          headers["Cache-Control"] = "private, no-store";
+          headers["CDN-Cache-Control"] = "no-store";
+        }
+        return new Response(null, { status: 301, headers });
+      }
     }
     const path = url.pathname === "/" ? "/index.html" : url.pathname;
 
@@ -1233,6 +1264,7 @@ export default {
           submitted_at: new Date().toISOString(),
           source_url: url.origin + url.pathname,
           fields: formFields(form),
+          ref: field(form, "ref"),
         });
         if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(hubForward);
         return Response.redirect(new URL("/received?for=join", request.url), 303);
@@ -1267,7 +1299,7 @@ export default {
     }
     if (path === "/index.html") return html(head ? null : homePage());
     if (path === "/why-we-exist" || path === "/why-we-exist.html") return html(head ? null : whyWeExistPage());
-    if (path === "/join" || path === "/join.html") return html(head ? null : joinPage());
+    if (path === "/join" || path === "/join.html") return joinHtml(head ? null : joinPage(url.searchParams.get("ref")));
     if (path === "/login" || path === "/login.html") {
       return Response.redirect(HUB_LOGIN_URL, 302);
     }
